@@ -25,20 +25,17 @@ app.get('/', (req, res) => {
         <p>Servidor activo y listo para recibir mensajes de AutoResponder</p>
         <p>Endpoint: POST /webhook</p>
         <hr>
-        <h3>Formato esperado por AutoResponder:</h3>
-        <pre>
-{
-  "appPackageName": "tkstudio.autoresponderforwa",
-  "messengerPackageName": "com.whatsapp",
-  "query": {
-    "sender": "John Smith",
-    "message": "Hola",
-    "isGroup": false,
-    "ruleId": 1,
-    "isTestMessage": false
-  }
-}
-        </pre>
+        <h3>Palabras clave disponibles:</h3>
+        <ul>
+            <li><strong>hola</strong> - Saludo</li>
+            <li><strong>imagen</strong> - Envía una imagen</li>
+            <li><strong>catalogo</strong> - Catálogo con imagen</li>
+            <li><strong>precio</strong> - Lista de precios</li>
+            <li><strong>horario</strong> - Horarios de atención</li>
+            <li><strong>contacto</strong> - Información de contacto</li>
+            <li><strong>gracias</strong> - Despedida cortés</li>
+            <li><strong>adios</strong> - Despedida</li>
+        </ul>
     `);
 });
 
@@ -97,7 +94,23 @@ app.post('/webhook', (req, res) => {
     if (mensajeLower.includes('hola') || mensajeLower.includes('hi') || mensajeLower.includes('buenos')) {
         respuestas = [
             { message: `¡Hola ${sender}! 👋` },
-            { message: "¿En qué puedo ayudarte hoy?" }
+            { message: "¿En qué puedo ayudarte hoy?\n\nPuedes escribir:\n• imagen\n• catalogo\n• precio\n• horario" }
+        ];
+        
+    } else if (mensajeLower.includes('imagen') || mensajeLower.includes('foto') || mensajeLower.includes('picture')) {
+        respuestas = [
+            { message: "📸 Aquí está la imagen que solicitaste:" },
+            { image: "https://i.imgur.com/sraR9Lu.jpg" }
+        ];
+        
+    } else if (mensajeLower.includes('catalogo') || mensajeLower.includes('catálogo') || mensajeLower.includes('producto')) {
+        respuestas = [
+            { message: "📱 *Nuestro catálogo de productos*" },
+            { 
+                message: "Aquí puedes ver nuestros productos destacados:",
+                image: "https://i.imgur.com/sraR9Lu.jpg"
+            },
+            { message: "¿Qué producto te interesa?" }
         ];
         
     } else if (mensajeLower.includes('precio') || mensajeLower.includes('costo') || mensajeLower.includes('cuanto')) {
@@ -111,13 +124,6 @@ app.post('/webhook', (req, res) => {
         respuestas = [
             { message: "⏰ *Horarios de atención:*" },
             { message: "Lunes a Viernes: 9:00 AM - 6:00 PM\nSábados: 10:00 AM - 2:00 PM\nDomingos: Cerrado" }
-        ];
-        
-    } else if (mensajeLower.includes('catalogo') || mensajeLower.includes('catálogo') || mensajeLower.includes('producto')) {
-        respuestas = [
-            { message: "📱 *Nuestro catálogo incluye:*" },
-            { message: "• Teléfonos inteligentes\n• Laptops y computadoras\n• Accesorios tecnológicos\n• Software y licencias" },
-            { message: "¿Qué producto te interesa?" }
         ];
         
     } else if (mensajeLower.includes('contacto') || mensajeLower.includes('telefono') || mensajeLower.includes('teléfono')) {
@@ -143,7 +149,7 @@ app.post('/webhook', (req, res) => {
         respuestas = [
             { message: `Hola ${sender}, gracias por tu mensaje 📝` },
             { message: `Recibí: "${message}"` },
-            { message: "Puedes preguntarme sobre:\n• Precios\n• Horarios\n• Productos\n• Contacto" }
+            { message: "Puedes preguntarme sobre:\n• imagen\n• catalogo\n• precio\n• horario\n• contacto" }
         ];
     }
     
@@ -153,7 +159,8 @@ app.post('/webhook', (req, res) => {
     
     console.log(`✅ Respuestas generadas: ${respuestas.length} mensajes`);
     respuestas.forEach((r, i) => {
-        console.log(`   ${i + 1}. ${r.message.substring(0, 50)}...`);
+        const msgPreview = r.message ? r.message.substring(0, 50) : '[imagen]';
+        console.log(`   ${i + 1}. ${msgPreview}${r.image ? ' [+imagen]' : ''}...`);
     });
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
@@ -185,7 +192,7 @@ app.get('/webhook', (req, res) => {
             response: {
                 replies: [
                     { message: 'Reply 1' },
-                    { message: 'Reply 2' }
+                    { message: 'Reply 2', image: 'https://example.com/image.jpg' }
                 ]
             }
         }
@@ -197,7 +204,8 @@ app.get('/test', (req, res) => {
     res.json({
         status: 'online',
         timestamp: new Date().toISOString(),
-        message: 'Servidor funcionando correctamente'
+        message: 'Servidor funcionando correctamente',
+        features: ['text', 'images']
     });
 });
 
@@ -206,5 +214,6 @@ app.listen(PORT, () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
     console.log(`📡 Listo para recibir mensajes de AutoResponder`);
+    console.log(`📸 Soporte para imágenes: ACTIVADO`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 });
