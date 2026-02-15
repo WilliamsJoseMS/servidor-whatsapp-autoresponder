@@ -47,11 +47,13 @@ function descargarImagenBase64(url) {
 }
 
 app.get('/', (req, res) => {
-    res.send('<h1>Servidor WhatsApp Bot</h1><p>Activo - Descarga y adjunta imagenes</p><img src="' + IMAGEN_URL + '" style="max-width:400px"><p>Endpoint: POST /webhook</p>');
+    res.send('<h1>Servidor WhatsApp Bot</h1><p>Activo - SIEMPRE envia imagen</p><img src="' + IMAGEN_URL + '" style="max-width:400px"><p>Endpoint: POST /webhook</p>');
 });
 
 app.post('/webhook', async (req, res) => {
-    console.log('Mensaje recibido');
+    console.log('==================================');
+    console.log('MENSAJE RECIBIDO');
+    console.log('==================================');
     console.log(JSON.stringify(req.body, null, 2));
     
     if (!req.body.query || !req.body.query.sender || !req.body.query.message) {
@@ -60,106 +62,69 @@ app.post('/webhook', async (req, res) => {
     
     const sender = req.body.query.sender;
     const message = req.body.query.message;
-    const msg = message.toLowerCase().trim();
     
-    console.log('De:', sender, 'Mensaje:', message);
+    console.log('De:', sender);
+    console.log('Mensaje:', message);
+    console.log('----------------------------------');
     
-    let respuestas = [];
-    
-    // Si el comando requiere imagen, descargarla
-    const comandosConImagen = ['test1', 'test2', 'test3', 'test4', 'test5', 'test6', 'imagen', 'foto', 'catalogo'];
-    const necesitaImagen = comandosConImagen.some(cmd => msg.includes(cmd));
-    
+    // DESCARGAR LA IMAGEN SIEMPRE
+    console.log('Descargando imagen...');
     let imagenBase64 = null;
-    if (necesitaImagen) {
-        try {
-            console.log('Descargando imagen...');
-            imagenBase64 = await descargarImagenBase64(IMAGEN_URL);
-            console.log('Imagen descargada, tamaño base64:', imagenBase64.length, 'caracteres');
-        } catch (error) {
-            console.error('Error descargando imagen:', error);
-        }
+    
+    try {
+        imagenBase64 = await descargarImagenBase64(IMAGEN_URL);
+        console.log('Imagen descargada! Tamaño:', imagenBase64.length, 'caracteres');
+    } catch (error) {
+        console.error('Error descargando imagen:', error);
     }
     
-    // TESTS CON IMAGEN BASE64
-    if (msg === 'test1') {
-        respuestas = [
-            { message: 'TEST 1: Campo image con base64', image: 'data:image/png;base64,' + imagenBase64 }
-        ];
-    } else if (msg === 'test2') {
-        respuestas = [
-            { message: 'TEST 2: Campo image sin prefijo', image: imagenBase64 }
-        ];
-    } else if (msg === 'test3') {
-        respuestas = [
-            { message: 'TEST 3: Campo media con base64', media: 'data:image/png;base64,' + imagenBase64 }
-        ];
-    } else if (msg === 'test4') {
-        respuestas = [
-            { message: 'TEST 4: Campo file con base64', file: 'data:image/png;base64,' + imagenBase64 }
-        ];
-    } else if (msg === 'test5') {
-        respuestas = [
-            { message: 'TEST 5: Mensaje separado', image: 'data:image/png;base64,' + imagenBase64 }
-        ];
-    } else if (msg === 'test6') {
+    // PREPARAR RESPUESTAS - SIEMPRE CON IMAGEN
+    let respuestas = [];
+    
+    if (imagenBase64) {
+        // Enviar la imagen en TODOS los formatos posibles
         respuestas = [
             { 
-                message: 'TEST 6: Todos los campos',
-                image: 'data:image/png;base64,' + imagenBase64,
-                media: 'data:image/png;base64,' + imagenBase64,
-                file: 'data:image/png;base64,' + imagenBase64,
-                attachment: 'data:image/png;base64,' + imagenBase64
+                message: 'Recibí tu mensaje: ' + message,
+                image: 'data:image/png;base64,' + imagenBase64
+            },
+            {
+                image: IMAGEN_URL
+            },
+            {
+                media: 'data:image/png;base64,' + imagenBase64
+            },
+            {
+                message: 'Enlace directo: ' + IMAGEN_URL
             }
-        ];
-        
-    // COMANDOS NORMALES CON IMAGEN
-    } else if (msg.includes('imagen') || msg.includes('foto')) {
-        respuestas = [
-            { message: 'Aqui esta tu imagen:' },
-            { image: 'data:image/png;base64,' + imagenBase64 }
-        ];
-    } else if (msg.includes('catalogo')) {
-        respuestas = [
-            { message: 'CATALOGO DE PRODUCTOS' },
-            { message: 'Nuestros productos:', image: 'data:image/png;base64,' + imagenBase64 },
-            { message: 'Te interesa alguno?' }
-        ];
-        
-    // COMANDOS SIN IMAGEN
-    } else if (msg.includes('hola')) {
-        respuestas = [
-            { message: 'Hola ' + sender + '!' },
-            { message: 'TESTS (imagen base64):\ntest1, test2, test3, test4, test5, test6\n\nCOMANDOS:\nimagen, catalogo, precio, horario' }
-        ];
-    } else if (msg.includes('precio')) {
-        respuestas = [
-            { message: 'PRECIOS' },
-            { message: 'Basico: $10\nPremium: $25\nEmpresarial: $50' }
-        ];
-    } else if (msg.includes('horario')) {
-        respuestas = [
-            { message: 'HORARIOS' },
-            { message: 'Lun-Vie: 9AM-6PM\nSab: 10AM-2PM' }
         ];
     } else {
         respuestas = [
-            { message: 'Recibi: ' + message },
-            { message: 'Escribe hola para ver el menu' }
+            { message: 'Recibí: ' + message },
+            { message: 'Error al cargar imagen. URL: ' + IMAGEN_URL }
         ];
     }
     
-    console.log('Enviando', respuestas.length, 'respuestas');
+    console.log('Enviando', respuestas.length, 'respuestas con imagen');
+    console.log('==================================\n');
+    
     res.status(200).json({ replies: respuestas });
 });
 
 app.get('/webhook', (req, res) => {
-    res.json({ status: 'ok', imageUrl: IMAGEN_URL });
+    res.json({ 
+        status: 'ok', 
+        imageUrl: IMAGEN_URL,
+        mode: 'Siempre envia imagen'
+    });
 });
 
 app.listen(PORT, () => {
-    console.log('Servidor en puerto', PORT);
+    console.log('==================================');
+    console.log('SERVIDOR INICIADO');
+    console.log('==================================');
+    console.log('Puerto:', PORT);
     console.log('Imagen:', IMAGEN_URL);
-    console.log('Modo: Descarga y convierte a base64');
-    console.log('Listo');
+    console.log('Modo: SIEMPRE ENVÍA IMAGEN');
+    console.log('==================================\n');
 });
