@@ -4,14 +4,17 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Configurar para recibir JSON y form-data
+// Configurar para recibir JSON
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Habilitar CORS para AutoResponder
+// Headers requeridos por AutoResponder
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.header('Content-Type', 'application/json; charset=UTF-8');
+    res.header('Access-Control-Allow-Methods', 'POST');
+    res.header('Access-Control-Max-Age', '3600');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
     next();
 });
 
@@ -19,126 +22,172 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
     res.send(`
         <h1>✅ Servidor WhatsApp funcionando!</h1>
-        <p>Servidor activo y listo para recibir mensajes</p>
-        <p>Usa el endpoint /webhook para AutoResponder</p>
+        <p>Servidor activo y listo para recibir mensajes de AutoResponder</p>
+        <p>Endpoint: POST /webhook</p>
         <hr>
-        <h3>Endpoints disponibles:</h3>
-        <ul>
-            <li>GET / - Esta página</li>
-            <li>POST /webhook - Recibir mensajes de AutoResponder</li>
-            <li>GET /test - Prueba simple</li>
-        </ul>
+        <h3>Formato esperado por AutoResponder:</h3>
+        <pre>
+{
+  "appPackageName": "tkstudio.autoresponderforwa",
+  "messengerPackageName": "com.whatsapp",
+  "query": {
+    "sender": "John Smith",
+    "message": "Hola",
+    "isGroup": false,
+    "ruleId": 1,
+    "isTestMessage": false
+  }
+}
+        </pre>
     `);
 });
 
-// Endpoint para recibir mensajes de AutoResponder
+// Endpoint principal para AutoResponder
 app.post('/webhook', (req, res) => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📩 Nuevo mensaje recibido');
+    console.log('📩 Mensaje recibido de AutoResponder');
     console.log('Hora:', new Date().toLocaleString());
     console.log('Body completo:', JSON.stringify(req.body, null, 2));
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // AutoResponder puede enviar los datos de diferentes formas
-    const mensaje = req.body.message || req.body.query || req.body.text || '';
-    const nombre = req.body.name || req.body.from || 'Usuario';
-    const numero = req.body.number || req.body.phone || '';
-    const grupoNombre = req.body.groupname || '';
-    const esGrupo = req.body.isgroup === 'true' || req.body.isgroup === true;
-    
-    console.log(`👤 De: ${nombre} (${numero})`);
-    console.log(`💬 Mensaje: ${mensaje}`);
-    if (esGrupo) {
-        console.log(`👥 Grupo: ${grupoNombre}`);
+    // Verificar que los datos no estén incompletos
+    if (
+        !req.body.query ||
+        !req.body.appPackageName ||
+        !req.body.messengerPackageName ||
+        !req.body.query.sender ||
+        !req.body.query.message
+    ) {
+        console.error('❌ Error: Datos JSON incompletos');
+        
+        res.status(400).json({
+            replies: [
+                { message: "Error ❌" },
+                { message: "JSON data is incomplete. Was the request sent by AutoResponder?" }
+            ]
+        });
+        return;
     }
     
-    // Variable para la respuesta
-    let respuesta = '';
-    let retraso = 0; // delay en segundos
+    // Extraer datos del mensaje
+    const appPackageName = req.body.appPackageName;
+    const messengerPackageName = req.body.messengerPackageName;
+    const sender = req.body.query.sender;
+    const message = req.body.query.message;
+    const isGroup = req.body.query.isGroup;
+    const groupParticipant = req.body.query.groupParticipant || '';
+    const ruleId = req.body.query.ruleId;
+    const isTestMessage = req.body.query.isTestMessage;
+    
+    console.log(`👤 De: ${sender}`);
+    console.log(`💬 Mensaje: ${message}`);
+    console.log(`📱 App: ${appPackageName}`);
+    console.log(`💌 Messenger: ${messengerPackageName}`);
+    console.log(`👥 Es grupo: ${isGroup}`);
+    console.log(`🧪 Es prueba: ${isTestMessage}`);
     
     // ═══════════════════════════════════════════════════════════
-    // AQUÍ PUEDES PERSONALIZAR TUS RESPUESTAS AUTOMÁTICAS
+    // PROCESAR MENSAJES Y GENERAR RESPUESTAS
     // ═══════════════════════════════════════════════════════════
     
-    const mensajeLower = mensaje.toLowerCase().trim();
+    const mensajeLower = message.toLowerCase().trim();
+    let respuestas = [];
     
     // Respuestas según palabras clave
     if (mensajeLower.includes('hola') || mensajeLower.includes('hi') || mensajeLower.includes('buenos')) {
-        respuesta = `¡Hola ${nombre}! 👋 ¿En qué puedo ayudarte hoy?`;
+        respuestas = [
+            { message: `¡Hola ${sender}! 👋` },
+            { message: "¿En qué puedo ayudarte hoy?" }
+        ];
         
     } else if (mensajeLower.includes('precio') || mensajeLower.includes('costo') || mensajeLower.includes('cuanto')) {
-        respuesta = `Hola ${nombre}, nuestros precios son:\n\n` +
-                   `📦 Plan Básico: $10/mes\n` +
-                   `⭐ Plan Premium: $25/mes\n` +
-                   `🚀 Plan Empresarial: $50/mes\n\n` +
-                   `¿Cuál te interesa?`;
+        respuestas = [
+            { message: `Hola ${sender}, nuestros precios son:` },
+            { message: "📦 Plan Básico: $10/mes\n⭐ Plan Premium: $25/mes\n🚀 Plan Empresarial: $50/mes" },
+            { message: "¿Cuál te interesa?" }
+        ];
         
     } else if (mensajeLower.includes('horario') || mensajeLower.includes('hora') || mensajeLower.includes('atiende')) {
-        respuesta = `⏰ *Horarios de atención:*\n\n` +
-                   `Lunes a Viernes: 9:00 AM - 6:00 PM\n` +
-                   `Sábados: 10:00 AM - 2:00 PM\n` +
-                   `Domingos: Cerrado\n\n` +
-                   `¿En qué más puedo ayudarte?`;
+        respuestas = [
+            { message: "⏰ *Horarios de atención:*" },
+            { message: "Lunes a Viernes: 9:00 AM - 6:00 PM\nSábados: 10:00 AM - 2:00 PM\nDomingos: Cerrado" }
+        ];
         
-    } else if (mensajeLower.includes('producto') || mensajeLower.includes('catalogo') || mensajeLower.includes('catálogo')) {
-        respuesta = `📱 *Nuestro catálogo incluye:*\n\n` +
-                   `• Teléfonos inteligentes\n` +
-                   `• Laptops y computadoras\n` +
-                   `• Accesorios tecnológicos\n` +
-                   `• Software y licencias\n\n` +
-                   `¿Qué producto te interesa?`;
+    } else if (mensajeLower.includes('catalogo') || mensajeLower.includes('catálogo') || mensajeLower.includes('producto')) {
+        respuestas = [
+            { message: "📱 *Nuestro catálogo incluye:*" },
+            { message: "• Teléfonos inteligentes\n• Laptops y computadoras\n• Accesorios tecnológicos\n• Software y licencias" },
+            { message: "¿Qué producto te interesa?" }
+        ];
         
     } else if (mensajeLower.includes('contacto') || mensajeLower.includes('telefono') || mensajeLower.includes('teléfono')) {
-        respuesta = `📞 *Datos de contacto:*\n\n` +
-                   `Teléfono: +1 234 567 8900\n` +
-                   `Email: info@ejemplo.com\n` +
-                   `Web: www.ejemplo.com\n\n` +
-                   `¿Necesitas algo más?`;
+        respuestas = [
+            { message: "📞 *Datos de contacto:*" },
+            { message: "Teléfono: +1 234 567 8900\nEmail: info@ejemplo.com\nWeb: www.ejemplo.com" }
+        ];
         
     } else if (mensajeLower.includes('gracias') || mensajeLower.includes('thank')) {
-        respuesta = `¡De nada, ${nombre}! 😊 Estoy aquí para ayudarte cuando lo necesites.`;
+        respuestas = [
+            { message: `¡De nada, ${sender}! 😊` },
+            { message: "Estoy aquí para ayudarte cuando lo necesites." }
+        ];
         
     } else if (mensajeLower.includes('adios') || mensajeLower.includes('chao') || mensajeLower.includes('bye')) {
-        respuesta = `¡Hasta luego, ${nombre}! 👋 Que tengas un excelente día.`;
+        respuestas = [
+            { message: `¡Hasta luego, ${sender}! 👋` },
+            { message: "Que tengas un excelente día." }
+        ];
         
     } else {
         // Respuesta por defecto
-        respuesta = `Hola ${nombre}, gracias por tu mensaje. 📝\n\n` +
-                   `Recibí: "${mensaje}"\n\n` +
-                   `Puedes preguntarme sobre:\n` +
-                   `• Precios\n` +
-                   `• Horarios\n` +
-                   `• Productos\n` +
-                   `• Contacto\n\n` +
-                   `¿En qué puedo ayudarte?`;
+        respuestas = [
+            { message: `Hola ${sender}, gracias por tu mensaje 📝` },
+            { message: `Recibí: "${message}"` },
+            { message: "Puedes preguntarme sobre:\n• Precios\n• Horarios\n• Productos\n• Contacto" }
+        ];
     }
     
     // ═══════════════════════════════════════════════════════════
-    // FIN DE RESPUESTAS PERSONALIZADAS
+    // FIN DE PROCESAMIENTO
     // ═══════════════════════════════════════════════════════════
     
-    console.log(`✅ Respuesta generada: ${respuesta.substring(0, 50)}...`);
+    console.log(`✅ Respuestas generadas: ${respuestas.length} mensajes`);
+    respuestas.forEach((r, i) => {
+        console.log(`   ${i + 1}. ${r.message.substring(0, 50)}...`);
+    });
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
-    // Enviar respuesta a AutoResponder
-    // IMPORTANTE: AutoResponder espera el campo "reply"
-    res.json({
-        reply: respuesta,
-        delay: retraso  // Opcional: delay en segundos antes de enviar
+    // Enviar respuesta en el formato correcto de AutoResponder
+    res.status(200).json({
+        replies: respuestas
     });
 });
 
-// Endpoint GET para pruebas rápidas
+// Endpoint GET para información
 app.get('/webhook', (req, res) => {
     res.json({
         status: 'ok',
         message: 'Webhook activo. Usa POST para enviar mensajes.',
         endpoint: '/webhook',
         method: 'POST',
-        ejemplo: {
-            message: 'hola',
-            name: 'Juan',
-            number: '+1234567890'
+        format: {
+            request: {
+                appPackageName: 'tkstudio.autoresponderforwa',
+                messengerPackageName: 'com.whatsapp',
+                query: {
+                    sender: 'John Smith',
+                    message: 'Hola',
+                    isGroup: false,
+                    ruleId: 1,
+                    isTestMessage: false
+                }
+            },
+            response: {
+                replies: [
+                    { message: 'Reply 1' },
+                    { message: 'Reply 2' }
+                ]
+            }
         }
     });
 });
@@ -156,10 +205,6 @@ app.get('/test', (req, res) => {
 app.listen(PORT, () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-    console.log(`📡 Endpoints disponibles:`);
-    console.log(`   GET  / - Página de inicio`);
-    console.log(`   POST /webhook - Recibir mensajes`);
-    console.log(`   GET  /webhook - Info del webhook`);
-    console.log(`   GET  /test - Prueba del servidor`);
+    console.log(`📡 Listo para recibir mensajes de AutoResponder`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 });
