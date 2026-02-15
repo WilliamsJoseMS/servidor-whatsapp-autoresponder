@@ -46,4 +46,35 @@ app.post('/webhook', (req, res) => {
     } else if (msg === 'test2') {
         respuestas = [{ message: 'TEST 2: Mensaje separado' }, { image: IMAGEN_URL }];
     } else if (msg === 'test3') {
-        respuestas
+        respuestas = [{ message: 'TEST 3: URL en texto\n\n' + IMAGEN_URL }];
+    } else if (msg === 'test4') {
+        respuestas = [{ message: 'TEST 4: Campo media', media: IMAGEN_URL }];
+    } else if (msg === 'test5') {
+        respuestas = [{ message: 'TEST 5: Todos los campos', image: IMAGEN_URL, media: IMAGEN_URL, imageUrl: IMAGEN_URL }];
+    } else if (msg.includes('imagen') || msg.includes('foto')) {
+        respuestas = [{ message: 'Aqui esta tu imagen:' }, { image: IMAGEN_URL, media: IMAGEN_URL }];
+    } else if (msg.includes('catalogo')) {
+        respuestas = [{ message: 'CATALOGO DE PRODUCTOS' }, { message: 'Nuestros productos:', image: IMAGEN_URL }, { message: 'Te interesa alguno?' }];
+    } else if (msg.includes('hola')) {
+        respuestas = [{ message: 'Hola ' + sender + '!' }, { message: 'Prueba: test1, test2, test3, test4, test5, imagen, catalogo' }];
+    } else if (msg.includes('precio')) {
+        respuestas = [{ message: 'PRECIOS' }, { message: 'Basico: $10\nPremium: $25\nEmpresarial: $50' }];
+    } else if (msg.includes('horario')) {
+        respuestas = [{ message: 'HORARIOS' }, { message: 'Lun-Vie: 9AM-6PM\nSab: 10AM-2PM' }];
+    } else {
+        respuestas = [{ message: 'Recibi: ' + message }, { message: 'Escribe hola para ver el menu' }];
+    }
+    
+    console.log('Enviando', respuestas.length, 'respuestas');
+    res.status(200).json({ replies: respuestas });
+});
+
+app.get('/webhook', (req, res) => {
+    res.json({ status: 'ok', imageUrl: IMAGEN_URL });
+});
+
+app.listen(PORT, () => {
+    console.log('Servidor en puerto', PORT);
+    console.log('Imagen:', IMAGEN_URL);
+    console.log('Listo');
+});
