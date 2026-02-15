@@ -8,13 +8,18 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Headers requeridos por AutoResponder
+// Headers requeridos por AutoResponder - MÁS PERMISIVOS
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Content-Type', 'application/json; charset=UTF-8');
-    res.header('Access-Control-Allow-Methods', 'POST');
+    res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.header('Access-Control-Max-Age', '3600');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With');
+    res.header('Access-Control-Allow-Headers', '*');
+    
+    // Responder a preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
     next();
 });
 
@@ -25,16 +30,21 @@ app.get('/', (req, res) => {
         <p>Servidor activo y listo para recibir mensajes de AutoResponder</p>
         <p>Endpoint: POST /webhook</p>
         <hr>
-        <h3>Palabras clave disponibles:</h3>
+        <h3>Comandos con imágenes:</h3>
+        <ul>
+            <li><strong>test1</strong> - Prueba método 1 (campo image)</li>
+            <li><strong>test2</strong> - Prueba método 2 (campo media)</li>
+            <li><strong>test3</strong> - Prueba método 3 (enlace en texto)</li>
+            <li><strong>test4</strong> - Prueba método 4 (mensaje separado)</li>
+            <li><strong>imagen</strong> - Imagen estándar</li>
+            <li><strong>catalogo</strong> - Catálogo con imagen</li>
+        </ul>
+        <hr>
+        <h3>Otros comandos:</h3>
         <ul>
             <li><strong>hola</strong> - Saludo</li>
-            <li><strong>imagen</strong> - Envía una imagen</li>
-            <li><strong>catalogo</strong> - Catálogo con imagen</li>
-            <li><strong>precio</strong> - Lista de precios</li>
-            <li><strong>horario</strong> - Horarios de atención</li>
-            <li><strong>contacto</strong> - Información de contacto</li>
-            <li><strong>gracias</strong> - Despedida cortés</li>
-            <li><strong>adios</strong> - Despedida</li>
+            <li><strong>precio</strong> - Precios</li>
+            <li><strong>horario</strong> - Horarios</li>
         </ul>
     `);
 });
@@ -90,27 +100,97 @@ app.post('/webhook', (req, res) => {
     const mensajeLower = message.toLowerCase().trim();
     let respuestas = [];
     
-    // Respuestas según palabras clave
-    if (mensajeLower.includes('hola') || mensajeLower.includes('hi') || mensajeLower.includes('buenos')) {
+    // URL de la imagen
+    const imagenURL = "https://i.imgur.com/sraR9Lu.jpg";
+    
+    // ═════════════════════════════════════════════════════════
+    // PRUEBAS DE DIFERENTES MÉTODOS PARA ENVIAR IMÁGENES
+    // ═════════════════════════════════════════════════════════
+    
+    if (mensajeLower.includes('test1')) {
+        // MÉTODO 1: Campo "image" en el objeto
+        console.log('🧪 Probando MÉTODO 1: campo image');
         respuestas = [
-            { message: `¡Hola ${sender}! 👋` },
-            { message: "¿En qué puedo ayudarte hoy?\n\nPuedes escribir:\n• imagen\n• catalogo\n• precio\n• horario" }
+            { message: "🧪 TEST 1: Usando campo 'image'" },
+            { 
+                message: "Si ves una imagen debajo, el método 1 funciona:",
+                image: imagenURL
+            }
         ];
         
-    } else if (mensajeLower.includes('imagen') || mensajeLower.includes('foto') || mensajeLower.includes('picture')) {
+    } else if (mensajeLower.includes('test2')) {
+        // MÉTODO 2: Campo "media"
+        console.log('🧪 Probando MÉTODO 2: campo media');
         respuestas = [
-            { message: "📸 Aquí está la imagen que solicitaste:" },
-            { image: "https://i.imgur.com/sraR9Lu.jpg" }
+            { message: "🧪 TEST 2: Usando campo 'media'" },
+            { 
+                message: "Si ves una imagen debajo, el método 2 funciona:",
+                media: imagenURL
+            }
+        ];
+        
+    } else if (mensajeLower.includes('test3')) {
+        // MÉTODO 3: URL en el texto (WhatsApp muestra vista previa automática)
+        console.log('🧪 Probando MÉTODO 3: URL en texto');
+        respuestas = [
+            { message: "🧪 TEST 3: URL en el mensaje\n\nSi WhatsApp muestra vista previa, el método 3 funciona:\n\n" + imagenURL }
+        ];
+        
+    } else if (mensajeLower.includes('test4')) {
+        // MÉTODO 4: Imagen en mensaje separado
+        console.log('🧪 Probando MÉTODO 4: mensaje separado con imagen');
+        respuestas = [
+            { message: "🧪 TEST 4: Mensaje separado con imagen" },
+            { image: imagenURL }
+        ];
+        
+    } else if (mensajeLower.includes('test5')) {
+        // MÉTODO 5: Todos los campos posibles
+        console.log('🧪 Probando MÉTODO 5: todos los campos');
+        respuestas = [
+            { message: "🧪 TEST 5: Múltiples campos de imagen" },
+            { 
+                message: "Probando todos los formatos:",
+                image: imagenURL,
+                media: imagenURL,
+                imageUrl: imagenURL,
+                mediaUrl: imagenURL,
+                attachment: imagenURL,
+                file: imagenURL
+            }
+        ];
+        
+    // ═════════════════════════════════════════════════════════
+    // COMANDOS NORMALES
+    // ═════════════════════════════════════════════════════════
+        
+    } else if (mensajeLower.includes('imagen') || mensajeLower.includes('foto') || mensajeLower.includes('picture')) {
+        console.log('📸 Enviando imagen - método combinado');
+        respuestas = [
+            { message: "📸 Aquí está tu imagen:" },
+            { 
+                image: imagenURL,
+                media: imagenURL
+            },
+            { message: "Si no la ves, aquí está el enlace:\n\n" + imagenURL }
         ];
         
     } else if (mensajeLower.includes('catalogo') || mensajeLower.includes('catálogo') || mensajeLower.includes('producto')) {
+        console.log('📱 Enviando catálogo con imagen');
         respuestas = [
             { message: "📱 *Nuestro catálogo de productos*" },
             { 
-                message: "Aquí puedes ver nuestros productos destacados:",
-                image: "https://i.imgur.com/sraR9Lu.jpg"
+                message: "Aquí puedes ver nuestros productos:",
+                image: imagenURL,
+                media: imagenURL
             },
             { message: "¿Qué producto te interesa?" }
+        ];
+        
+    } else if (mensajeLower.includes('hola') || mensajeLower.includes('hi') || mensajeLower.includes('buenos')) {
+        respuestas = [
+            { message: `¡Hola ${sender}! 👋` },
+            { message: "¿En qué puedo ayudarte?\n\n🧪 PRUEBA DE IMÁGENES:\n• test1\n• test2\n• test3\n• test4\n• test5\n\n📋 OTROS:\n• imagen\n• catalogo\n• precio" }
         ];
         
     } else if (mensajeLower.includes('precio') || mensajeLower.includes('costo') || mensajeLower.includes('cuanto')) {
@@ -149,7 +229,7 @@ app.post('/webhook', (req, res) => {
         respuestas = [
             { message: `Hola ${sender}, gracias por tu mensaje 📝` },
             { message: `Recibí: "${message}"` },
-            { message: "Puedes preguntarme sobre:\n• imagen\n• catalogo\n• precio\n• horario\n• contacto" }
+            { message: "Comandos disponibles:\n\n🧪 TESTS:\n• test1 - test5\n\n📸 IMÁGENES:\n• imagen\n• catalogo\n\n📋 OTROS:\n• precio\n• horario\n• contacto" }
         ];
     }
     
@@ -159,8 +239,9 @@ app.post('/webhook', (req, res) => {
     
     console.log(`✅ Respuestas generadas: ${respuestas.length} mensajes`);
     respuestas.forEach((r, i) => {
-        const msgPreview = r.message ? r.message.substring(0, 50) : '[imagen]';
-        console.log(`   ${i + 1}. ${msgPreview}${r.image ? ' [+imagen]' : ''}...`);
+        const msgPreview = r.message ? r.message.substring(0, 40) : '[solo imagen]';
+        const hasImage = r.image || r.media || r.imageUrl || r.mediaUrl;
+        console.log(`   ${i + 1}. ${msgPreview}${hasImage ? ' 📸[+imagen]' : ''}...`);
     });
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
@@ -177,24 +258,12 @@ app.get('/webhook', (req, res) => {
         message: 'Webhook activo. Usa POST para enviar mensajes.',
         endpoint: '/webhook',
         method: 'POST',
-        format: {
-            request: {
-                appPackageName: 'tkstudio.autoresponderforwa',
-                messengerPackageName: 'com.whatsapp',
-                query: {
-                    sender: 'John Smith',
-                    message: 'Hola',
-                    isGroup: false,
-                    ruleId: 1,
-                    isTestMessage: false
-                }
-            },
-            response: {
-                replies: [
-                    { message: 'Reply 1' },
-                    { message: 'Reply 2', image: 'https://example.com/image.jpg' }
-                ]
-            }
+        imageTests: {
+            test1: 'Campo image',
+            test2: 'Campo media',
+            test3: 'URL en texto',
+            test4: 'Mensaje separado',
+            test5: 'Todos los campos'
         }
     });
 });
@@ -205,7 +274,7 @@ app.get('/test', (req, res) => {
         status: 'online',
         timestamp: new Date().toISOString(),
         message: 'Servidor funcionando correctamente',
-        features: ['text', 'images']
+        imageURL: 'https://i.imgur.com/sraR9Lu.jpg'
     });
 });
 
@@ -214,6 +283,6 @@ app.listen(PORT, () => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
     console.log(`📡 Listo para recibir mensajes de AutoResponder`);
-    console.log(`📸 Soporte para imágenes: ACTIVADO`);
+    console.log(`📸 5 métodos de prueba para imágenes disponibles`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 });
