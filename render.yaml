@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: servidor-whatsapp
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
